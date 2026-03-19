@@ -3,8 +3,8 @@
     <!-- 左侧上传区域 -->
     <div class="upload-section">
       <div class="upload-zone" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
-        <i>📁</i>
-        <h3>上传图片或视频进行检测</h3>
+        <i>🚗</i>
+        <h3>上传图片或视频进行车牌检测</h3>
         <p>支持格式：JPG、PNG、MP4、AVI，最大文件大小：500MB</p>
         <p>或直接将文件拖放到此处</p>
       </div>
@@ -116,7 +116,7 @@
       <!-- 统计信息 -->
       <div class="stats-card">
         <div class="stat-item">
-          <span class="stat-label">检测物品数</span>
+          <span class="stat-label">检测车牌数</span>
           <span class="stat-value">{{ detectionResults.length }}</span>
         </div>
         <div class="stat-item">
@@ -175,7 +175,7 @@ const previewVideoRef = ref(null);
 const webcamVideoRef = ref(null);
 
 // API 基础路径
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = 'http://127.0.0.1:5001';
 
 // 计算属性
 const averageConfidence = computed(() => {
@@ -324,6 +324,7 @@ const startDetection = async () => {
       formData.append('conf', confidenceThreshold.value);
       
       if (selectedFile.value.type.startsWith('image/')) {
+        // 车牌检测 API
         response = await axios.post(`${API_BASE_URL}/api/detect/image`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
@@ -333,6 +334,7 @@ const startDetection = async () => {
           previewUrl.value = `${API_BASE_URL}/api/result/${fileName}?t=${Date.now()}`;
         }
       } else if (selectedFile.value.type.startsWith('video/')) {
+        // 车牌检测视频 API
         response = await axios.post(`${API_BASE_URL}/api/detect/video`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 300000
@@ -384,7 +386,7 @@ const startDetection = async () => {
         formData.append('conf', confidenceThreshold.value);
 
         try {
-          const imgResponse = await axios.post(`${API_BASE_URL}/api/detect/image`, formData, {
+          const imgResponse = await axios.post(`${API_BASE_URL}/api/detect/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
 
@@ -406,7 +408,7 @@ const startDetection = async () => {
               previewUrl.value = `${API_BASE_URL}/api/result/${fileName}?t=${Date.now()}`;
             }
 
-            ElMessage({ message: `检测完成！识别出${detectionResults.value.length}个物品`, icon: '' });
+            ElMessage({ message: `检测完成！识别出${detectionResults.value.length}个车牌`, icon: '' });
           }
         } catch (e) {
           ElMessage({ message: '检测失败: ' + e.message, type: 'error', icon: '' });
@@ -427,7 +429,7 @@ const startDetection = async () => {
       }));
 
       saveToHistory();
-      ElMessage({ message: `检测完成！识别出${detectionResults.value.length}个物品`, icon: '' });
+      ElMessage({ message: `检测完成！识别出${detectionResults.value.length}个车牌`, icon: '' });
     }
   } catch (error) {
     console.error('检测失败:', error);
@@ -452,7 +454,7 @@ const saveToHistory = () => {
     results: [...detectionResults.value],
     processingTime: processingTime.value,
     detectType: selectedFile.value ? 'file' : 'webcam',
-    detectionMode: 'normal' // 标记为普通检测
+    detectionMode: 'license_plate' // 标记为车牌检测
   };
 
   const savedHistory = JSON.parse(localStorage.getItem('yolo_detection_history') || '[]');
@@ -496,13 +498,11 @@ const exportResults = async () => {
   }
 
   try {
-    // 获取原始文件名（去掉扩展名后加 _result）
     const baseName = selectedFile.value
       ? selectedFile.value.name.replace(/\.[^.]+$/, '')
       : 'webcam';
-    const downloadName = `${baseName}_result_${Date.now()}.jpg`;
+    const downloadName = `${baseName}_plate_result_${Date.now()}.jpg`;
 
-    // 如果是 blob URL 直接用，否则先 fetch 转 blob
     let blobUrl = previewUrl.value;
     let needRevoke = false;
     if (!previewUrl.value.startsWith('blob:')) {
